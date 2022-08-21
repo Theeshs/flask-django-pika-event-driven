@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8001:5000
+    command: >
+      sh -c "
+        pipenv run flask db migrate &&
+        pipenv run flask db upgrade &&
+        pipenv run python main.py
+      "
+
+    environment:
+      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://postgres:mysecretpassword@dbmain/main
+    depends_on: 
+      - dbmain
+  
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: "pipenv run python consumer.py"
+    depends_on:
+      - dbmain
+  
+  dbmain:
+    image: postgres:10-alpine
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment: 
+      - POSTGRES_DB=main
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+    ports:
+      - 5433:5432
